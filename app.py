@@ -10,7 +10,7 @@ app = Flask(__name__)
 MODEL_FILE = 'modelo_simplificado_final.h5'
 CLASS_NAMES = ['Vehículo de carga', 'Camioneta', 'Sedan']
 
-# Cargar modelo sin recompilar
+# Cargar modelo
 try:
     model = tf.keras.models.load_model(MODEL_FILE, compile=False)
     print(f"✅ Modelo '{MODEL_FILE}' cargado correctamente.")
@@ -18,11 +18,10 @@ except Exception as e:
     print(f"❌ Error al cargar el modelo: {e}")
     model = None
 
-# Preprocesamiento robusto de imagen
+# Preprocesamiento de imagen
 def preprocess_image(image_bytes):
     try:
-        img = Image.open(io.BytesIO(image_bytes))
-        img = img.convert('RGB')
+        img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         img = img.resize((224, 224))
         img_array = np.array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
@@ -62,11 +61,12 @@ def predict():
         predicted_class_name = CLASS_NAMES[predicted_class_index]
         confidence = float(np.max(prediction))
 
+        print("✅ Enviando respuesta JSON al cliente")
         return jsonify({
             'class': predicted_class_name,
             'confidence': f"{confidence:.2%}"
         })
 
     except Exception as e:
-        print("❌ Error en la predicción:", e)
+        print(f"❌ Error en la predicción: {e}")
         return jsonify({'error': f'Ocurrió un error: {str(e)}'}), 500

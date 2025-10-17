@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('file-input');
-  const uploadText = document.getElementById('upload-text');
   const imagePreview = document.getElementById('image-preview');
   const previewArea = document.getElementById('preview-area');
   const loader = document.getElementById('loader');
@@ -36,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(response => {
         loader.style.display = 'none';
         if (!response.ok) {
-          return response.json().then(data => {
-            throw new Error(data.error || 'Respuesta no válida del servidor');
+          return response.text().then(text => {
+            throw new Error(text || 'Respuesta vacía del servidor');
           });
         }
         return response.json();
