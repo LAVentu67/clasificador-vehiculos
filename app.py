@@ -37,19 +37,17 @@ def index():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    print("📥 Solicitud recibida en /predict")
-
-    if model is None:
-        return jsonify({'error': 'El modelo no está cargado.'}), 500
-
-    if 'file' not in request.files:
-        return jsonify({'error': 'No se encontró el archivo.'}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No se seleccionó ningún archivo.'}), 400
-
     try:
+        if model is None:
+            return jsonify({'error': 'El modelo no está cargado.'}), 500
+
+        if 'file' not in request.files:
+            return jsonify({'error': 'No se encontró el archivo.'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No se seleccionó ningún archivo.'}), 400
+
         image_bytes = file.read()
 
         if len(image_bytes) > 5 * 1024 * 1024:
@@ -64,12 +62,11 @@ def predict():
         predicted_class_name = CLASS_NAMES[predicted_class_index]
         confidence = float(np.max(prediction))
 
-        print(f"✅ Predicción: {predicted_class_name} ({confidence:.2%})")
-
         return jsonify({
             'class': predicted_class_name,
             'confidence': f"{confidence:.2%}"
         })
+
     except Exception as e:
-        print(f"❌ Error en la predicción: {e}")
+        print("❌ Error en la predicción:", e)
         return jsonify({'error': f'Ocurrió un error: {str(e)}'}), 500
