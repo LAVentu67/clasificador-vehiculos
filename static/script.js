@@ -80,8 +80,4 @@ document.addEventListener('DOMContentLoaded', () => {
   function showToast(message) {
     toast.textContent = message;
     toast.classList.add('visible');
-    setTimeout(() => {
-      toast.classList.remove('visible');
-    }, 4000);
-  }
-});
+    setTimeout(() =>

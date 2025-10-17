@@ -67,12 +67,15 @@ def predict():
             print("❌ Falló el preprocesamiento")
             return jsonify({'error': 'No se pudo procesar la imagen.'}), 400
 
+        print("✅ Iniciando predicción...")
         prediction = model.predict(processed_image)
+        print("✅ Predicción completada.")
+
         predicted_class_index = int(np.argmax(prediction))
         predicted_class_name = CLASS_NAMES[predicted_class_index]
         confidence = float(np.max(prediction))
 
-        print(f"✅ Predicción: {predicted_class_name} ({confidence:.2%})")
+        print(f"✅ Resultado: {predicted_class_name} ({confidence:.2%})")
         return jsonify({
             'class': predicted_class_name,
             'confidence': f"{confidence:.2%}"
