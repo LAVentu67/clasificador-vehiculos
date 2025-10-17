@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clasificador Inteligente de Vehículos</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Clasificador Inteligente de Vehículos</h1>
+      <p>Sube una imagen para identificar el tipo de vehículo mediante inteligencia artificial. Categorías: <strong>Sedan</strong>, <strong>Camioneta</strong>, <strong>Vehículo de carga</strong>.</p>
+    </header>
+
+    <main>
+      <div class="upload-area" id="upload-area">
+        <form id="upload-form" enctype="multipart/form-data">
+          <input type="file" id="file-input" name="file" accept="image/*" hidden />
+          <label for="file-input" class="upload-label">
+            <span class="upload-icon">📤</span>
+            <span id="upload-text">Haz clic aquí o arrastra una imagen</span>
+          </label>
+        </form>
+      </div>
+
+      <div class="preview-area" id="preview-area" style="display: none;">
+        <img id="image-preview" src="#" alt="Vista previa de la imagen" />
+      </div>
+
+      <div class="loader" id="loader" style="display: none;">Procesando imagen...</div>
+
+      <div class="results-area" id="results-area" style="display: none;">
+        <h2>Resultado del Análisis</h2>
+        <p>Tipo de vehículo detectado: <strong id="result-class"></strong></p>
+        <div class="confidence-bar">
+          <div class="confidence-level" id="confidence-level"></div>
+        </div>
+        <p>Confianza del modelo: <strong id="result-confidence"></strong></p>
+        <button id="reset-button" class="reset-button">Subir otra imagen</button>
+      </div>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 · Sistema de Clasificación Vehicular con Redes Neuronales Convolucionales</p>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
