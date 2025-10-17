@@ -23,14 +23,13 @@ class Config:
     IMG_SIZE = 224
     BATCH_SIZE = 32
     
-    # +++ CAMBIO CLAVE: Definimos las nuevas clases y las fusiones +++
     CLASSES_TO_MERGE_GRANDE = ['E_pesado', 'bus']
     NEW_CLASS_GRANDE = 'Grande'
     
     CLASSES_TO_MERGE_CAMIONETA = ['jeep', 'SUV']
     NEW_CLASS_CAMIONETA = 'Camioneta'
 
-    FINAL_CLASSES = ['Grande', 'Camioneta', 'family sedan'] # Nuestras 3 nuevas clases
+    FINAL_CLASSES = ['Grande', 'Camioneta', 'family sedan']
     NUM_CLASSES = len(FINAL_CLASSES)
     
     LR_START = 1e-4
@@ -42,7 +41,7 @@ class Config:
 CONFIG = Config()
 
 # ==========================================================================
-# 2. PREPARACIÓN DE DATOS (CON DOBLE FUSIÓN)
+# 2. PREPARACIÓN DE DATOS
 # ==========================================================================
 def reorganize_data(base_dir, classes_to_merge, new_class_name):
     new_class_path = os.path.join(base_dir, new_class_name)
@@ -62,7 +61,6 @@ def reorganize_data(base_dir, classes_to_merge, new_class_name):
 try:
     path = kagglehub.dataset_download("marquis03/vehicle-classification")
     train_dir = os.path.join(path, 'train')
-    # +++ CAMBIO CLAVE: Realizamos las dos fusiones que propusiste +++
     reorganize_data(train_dir, CONFIG.CLASSES_TO_MERGE_GRANDE, CONFIG.NEW_CLASS_GRANDE)
     reorganize_data(train_dir, CONFIG.CLASSES_TO_MERGE_CAMIONETA, CONFIG.NEW_CLASS_CAMIONETA)
 except Exception as e:
@@ -85,7 +83,6 @@ validation_generator = datagen.flow_from_directory(
     class_mode='categorical', classes=CONFIG.FINAL_CLASSES, subset='validation', shuffle=False
 )
 from sklearn.utils.class_weight import compute_class_weight
-# Con clases más balanceadas, el cálculo automático es suficiente y más seguro.
 class_weights = compute_class_weight('balanced', classes=np.unique(train_generator.classes), y=train_generator.classes)
 class_weight_dict = dict(enumerate(class_weights))
 print("\nPesos de clase para el nuevo problema:", class_weight_dict)
@@ -102,15 +99,13 @@ x = base_model(inputs, training=False)
 x = GlobalAveragePooling2D()(x)
 x = Dense(1024, activation='relu', kernel_regularizer=l2(0.001))(x)
 x = Dropout(0.6)(x)
-# La capa de salida ahora se ajusta automáticamente a 3 clases
 predictions = Dense(CONFIG.NUM_CLASSES, activation='softmax')(x)
 model = Model(inputs, predictions)
 
-# Mantenemos FocalLoss con gamma alto, que funcionó muy bien
 loss_function = keras_cv.losses.FocalLoss(from_logits=False, gamma=3.0)
 
 # ==========================================================================
-# 5. ENTRENAMIENTO Y AJUSTE FINO (La estrategia no cambia)
+# 5. ENTRENAMIENTO Y AJUSTE FINO
 # ==========================================================================
 print("\n--- Fase 1: Entrenamiento de la cabeza ---")
 optimizer_head = keras.optimizers.AdamW(learning_rate=CONFIG.LR_START, weight_decay=1e-5)
@@ -139,9 +134,8 @@ else:
     history_fine = None
 
 # ==========================================================================
-# 6. VISUALIZACIÓN Y DIAGNÓSTICO FINAL CON TTA
+# 6. VISUALIZACIÓN Y DIAGNÓSTICO
 # ==========================================================================
-# ... (Esta sección no cambia) ...
 print("\nGenerando gráficas del historial de entrenamiento...")
 acc = history.history.get('accuracy', [])
 val_acc = history.history.get('val_accuracy', [])
@@ -165,32 +159,34 @@ if epochs_range:
     plt.legend(loc='upper right'); plt.title('Pérdida'); plt.grid(True)
     plt.savefig('training_history_simplified.png'); plt.show()
 
-print("\n--- Iniciando Diagnóstico del Modelo Final con Test Time Augmentation (TTA) ---")
-tta_steps = 5
-predictions_tta = []
-for i in range(tta_steps):
-    print(f"Paso TTA {i+1}/{tta_steps}...")
-    validation_generator.reset()
-    steps = math.ceil(validation_generator.samples / validation_generator.batch_size)
-    preds = model.predict(validation_generator, steps=steps)
-    predictions_tta.append(preds)
-
-avg_predictions = np.mean(predictions_tta, axis=0)
-predicted_classes = np.argmax(avg_predictions, axis=1)
-true_classes = validation_generator.classes
-class_labels = list(validation_generator.class_indices.keys())
-
-print('\n--- Reporte de Clasificación Detallado (con TTA) ---')
-print(classification_report(true_classes, predicted_classes, target_names=class_labels))
-
-cm = confusion_matrix(true_classes, predicted_classes)
-plt.figure(figsize=(10, 8))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_labels, yticklabels=class_labels)
-plt.title('Matriz de Confusión (con TTA)'); plt.ylabel('Clase Verdadera'); plt.xlabel('Clase Predicha'); plt.show()
-
-
 # ==========================================================================
-# 7. GUARDADO FINAL DEL MODELO
+# 7. GUARDADO FINAL DEL MODELO ORIGINAL
 # ==========================================================================
 model.save('modelo_simplificado_final.h5')
-print('\nModelo guardado como modelo_simplificado_final.h5')
+print('\nModelo original guardado como modelo_simplificado_final.h5')
+
+
+# ==========================================================================
+# 8. (NUEVO) CONVERSIÓN A TENSORFLOW LITE PARA DEPLOYMENT
+# ==========================================================================
+print("\n--- Convirtiendo el modelo a TensorFlow Lite con cuantización ---")
+
+# Cargar el modelo recién guardado
+saved_model = tf.keras.models.load_model('modelo_simplificado_final.h5', compile=False)
+
+# Crear el convertidor desde el modelo Keras
+converter = tf.lite.TFLiteConverter.from_keras_model(saved_model)
+
+# Activar la optimización por defecto (incluye cuantización)
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+
+# Realizar la conversión
+tflite_quant_model = converter.convert()
+
+# Guardar el nuevo modelo optimizado
+with open('modelo_optimizado.tflite', 'wb') as f:
+    f.write(tflite_quant_model)
+
+print('\n✅ Modelo optimizado guardado como modelo_optimizado.tflite')
+print(f"Tamaño original (.h5): {os.path.getsize('modelo_simplificado_final.h5') / 1e6:.2f} MB")
+print(f"Tamaño optimizado (.tflite): {len(tflite_quant_model) / 1e6:.2f} MB")
